@@ -34,7 +34,6 @@ class Data:
     available_modes = ["reference_sample_dark_standard_deviations",
                        "reference_sample_dark",
                        "reference_sample"]"""
-
     def __init__(self,
                  time,
                  td_reference,

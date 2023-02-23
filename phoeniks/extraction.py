@@ -7,7 +7,7 @@ from matplotlib.ticker import EngFormatter
 import copy
 # Internal libraries
 from .thz_data import Data
-from .optimization_problem import error_function
+from .optimization_problem import error_function, error_function2, error_function_thickness
 from .svmaf import SVMAF
 
 
@@ -44,27 +44,25 @@ class Extraction:
         # How many Fabry-Perot echoes fit in the rest of the time trace
         self.delta_max = None
 
+    def _cut_frequency(self, idx_start, idx_stop):
+        self.data.frequency = np.copy(self.original.frequency[idx_start:idx_stop])
+        self.data.omega = 2 * np.pi * self.data.frequency
+        if self.data.mode != "reference_sample":
+            self.data.fd_dark = np.copy(self.original.fd_dark[idx_start:idx_stop])
+        self.data.fd_reference = np.copy(self.original.fd_reference[idx_start:idx_stop])
+        self.data.fd_sample = np.copy(self.original.fd_sample[idx_start:idx_stop])
+
     def unwrap_phase(self, frequency_start=None, frequency_stop=None):
         if frequency_start is not None and frequency_stop is None:
             if frequency_start < self.original.frequency[0] or frequency_start > self.original.frequency[-1]:
                 raise ValueError("frequency_start outside frequency range of data.")
             idx_start = np.where(self.original.frequency >= frequency_start)[0][0]
-            self.data.frequency = self.original.frequency[idx_start:]
-            self.data.omega = 2 * np.pi * self.data.frequency
-            if self.data.mode != "reference_sample":
-                self.data.fd_dark = self.data.fd_dark[idx_start:]
-            self.data.fd_reference = self.data.fd_reference[idx_start:]
-            self.data.fd_sample = self.data.fd_sample[idx_start:]
+            self._cut_frequency(idx_start=idx_start, idx_stop=-1)
         elif frequency_start is None and frequency_stop is not None:
             if frequency_stop < self.original.frequency[0] or frequency_stop > self.original.frequency[-1]:
                 raise ValueError("frequency_stop outside frequency range of data.")
             idx_stop = np.where(self.original.frequency >= frequency_stop)[0][0]
-            self.data.frequency = self.original.frequency[:idx_stop]
-            self.data.omega = 2 * np.pi * self.data.frequency
-            if self.data.mode != "reference_sample":
-                self.data.fd_dark = self.data.fd_dark[:idx_stop]
-            self.data.fd_reference = self.data.fd_reference[:idx_stop]
-            self.data.fd_sample = self.data.fd_sample[:idx_stop]
+            self._cut_frequency(idx_start=0, idx_stop=idx_stop)
         else:
             if frequency_start < self.original.frequency[0] or frequency_start > self.original.frequency[-1]:
                 raise ValueError("frequency_start outside frequency range of data.")
@@ -72,12 +70,7 @@ class Extraction:
                 raise ValueError("frequency_stop outside frequency range of data.")
             idx_start = np.where(self.original.frequency >= frequency_start)[0][0]
             idx_stop = np.where(self.original.frequency >= frequency_stop)[0][0]
-            self.data.frequency = self.original.frequency[idx_start:idx_stop]
-            self.data.omega = 2 * np.pi * self.data.frequency
-            if self.data.mode != "reference_sample":
-                self.data.fd_dark = self.data.fd_dark[idx_start:]
-            self.data.fd_reference = self.data.fd_reference[idx_start:]
-            self.data.fd_sample = self.data.fd_sample[idx_start:]
+            self._cut_frequency(idx_start=idx_start, idx_stop=idx_stop)
         self.data.H = self.data.fd_sample / self.data.fd_reference
         self.data.phase_reference = np.unwrap(np.angle(self.data.fd_reference))
         self.data.phase_sample = np.unwrap(np.angle(self.data.fd_sample))
@@ -172,20 +165,35 @@ class Extraction:
 
     def get_max_delta(self, thickness) -> int:
         """How many echoes for a given sample thickness with given refractive index "n"
-        can fit in the time span between reference peak and end of the time trace?"""
-        timespan = np.abs(self.data.time[-1] - self.data.time[np.argmax(np.abs(self.data.td_reference))])
+        can fit in the time span between reference peak and end of the time trace?
+        Subtract pure zero-padded data"""
+        non_padded_time_data = self.data.time
+        non_padded_time_data = non_padded_time_data[~(self.data.td_reference == 0)]
+        timespan = np.abs(non_padded_time_data[-1] - non_padded_time_data[np.argmax(np.abs(self.data.td_reference))])
         optical_thickness = thickness * np.mean(self.data.n) / c_0
         delta_max = int(np.round((timespan / optical_thickness) / 2))
         self.data.delta_max = delta_max
         return delta_max
 
-    def get_thickness(self, thickness, thickness_range=50e-6, step_size=5e-6):
+    def get_thickness_array(self, thickness, thickness_range=50e-6, step_size=5e-6):
         """Tries to extract the thickness by total variation method, based on:
 
         Timothy D. Dorney, Richard G. Baraniuk, and Daniel M. Mittleman
         Material parameter estimation with terahertz time-domain spectroscopy
         J. Opt. Soc. Am. A 18, 1562-1571 (2001)
         https://doi.org/10.1364/JOSAA.18.001562
+
+        Nick's method, slightly different implementation of TV method:
+        Greenall, Nicholas Robert
+        Parameter Extraction and Uncertainty in Terahertz Time-Domain Spectroscopic Measurements
+        PhD thesis, University of Leeds (2017)
+        https://etheses.whiterose.ac.uk/19045/
+
+        Ioachim's method, based on the standard deviation at each frequency
+        Ioachim Pupeza, Rafal Wilk, and Martin Koch,
+        "Highly accurate optical material parameter determination with THz time-domain spectroscopy,"
+        Opt. Express 15, 4335-4350 (2007)
+        https://doi.org/10.1364/OE.15.004335
 
         Input:
         thickness (float): Guessed thickness of sample in [m]
@@ -196,6 +204,7 @@ class Extraction:
         thickness_array (np.ndarray, float): Tested thickness array
         tv_1 (np.ndarray, float): Total variation method of degree 1, minimum gives the best thickness approximation
         tv_2 (np.ndarray, float): Total variation method of degree 2, minimum gives the best thickness approximation
+        tv_2 (np.ndarray, float): Total variation based on Nick's method
         tv_s (np.ndarray, float): Total variation method compared to SVMAF data,
                                   only calculated when data is provided with standard deviation values.
                                   Minimum gives the best thickness approximation
@@ -221,18 +230,39 @@ class Extraction:
             m = np.arange(1, len(n) - 1)
             tv_dict["tv_1"][idx] = np.sum(_D(n, k, m))
             tv_dict["tv_2"][idx] = np.sum(np.abs(_D(n, k, m) - _D(n, k, m + 1)))
-            tv_dict["tv_n"][idx] = np.sum(np.abs(np.diff(n)))
+            tv_dict["tv_n"][idx] = np.sum(np.abs(np.diff(n))) * thickness
             if self.data.mode == "reference_sample_dark_standard_deviations":
                 svmaf_obj = SVMAF(self)
                 n_smooth, k_smooth, alpha_smooth = svmaf_obj.run(thickness=thickness)
-                tv_dict["tv_s"][idx] = np.abs(n - n_smooth) + np.abs(k - k_smooth)
+                tv_dict["tv_s"][idx] = np.sum(np.abs(n - n_smooth)) + np.sum(np.abs(k - k_smooth))
+        tv_dict["tv_1"] = tv_dict["tv_1"] / np.max(tv_dict["tv_1"])
+        tv_dict["tv_2"] = tv_dict["tv_2"] / np.max(tv_dict["tv_2"])
+        tv_dict["tv_n"] = tv_dict["tv_n"] / np.max(tv_dict["tv_n"])
         for key, value in tv_dict.items():
             print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.argmin(value)])}")
         return thickness_array, tv_dict
 
+    def get_thickness(self, thickness):
+        """Tries to extract the thickness by total variation method, based on:
+
+        For references see function get_thickness_array
+        The Nelder-Mead algorithm stops searching, when the thickness changes (xtolerance) is less than 1 µm.
+
+        Input:
+        thickness (float): Guessed thickness of sample in [m]
+
+        Output:
+        thickness (float): Optimized thickness with minimum total variation
+                           in the refractive index based on Nick's method
+        """
+        # Don't show progress bar for each single iteration, instead we initialize global progress bar
+        self.progress_bar = False
+        res = fmin(error_function_thickness, x0=thickness * 1e3, xtol=1e-3, ftol=1e-3, maxiter=20, args=(self,),
+                   disp=False)
+        return res[0]
+
     def run_optimization(self, thickness, delta_max=None):
         """Runs the optimization with Nelder-Mead minimization algorithm for each frequency.
-        Major improvement: Use solution from previous frequency as start point instead of the initial n and k.
 
         Input:
         thickness (float): Thickness of sample in [m]
@@ -249,25 +279,31 @@ class Extraction:
         else:
             self.delta_max = self.get_max_delta(thickness)
         self.data.H_approx = np.zeros(len(self.data.omega), dtype=np.complex128)
+        n_previous = self.data.n[0]
+        k_previous = self.data.k[0]
         if self.progress_bar:
             for i, w in enumerate(tqdm(self.data.omega)):
-                res = fmin(error_function,
-                           x0=np.array([self.data.n[i], self.data.k[i]]),
+                res = fmin(error_function2,
+                           x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(
                                i, self.data.omega[i], thickness, self.data.H, self.data.H_approx, self.data.delta_max),
                            disp=False)
                 self.data.n[i] = res[0]
                 self.data.k[i] = res[1]
+                n_previous = self.data.n[i]
+                k_previous = self.data.k[i]
         else:
             for i, w in enumerate(self.data.omega):
-                res = fmin(error_function,
-                           x0=np.array([self.data.n[i], self.data.k[i]]),
+                res = fmin(error_function2,
+                           x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(
                                i, self.data.omega[i], thickness, self.data.H, self.data.H_approx, self.data.delta_max),
                            disp=False)
                 self.data.n[i] = res[0]
                 self.data.k[i] = res[1]
+                n_previous = self.data.n[i]
+                k_previous = self.data.k[i]
         self.data.alpha = 4 * np.pi * self.data.frequency * self.data.k / c_0
         return self.data.frequency, self.data.n, self.data.k, self.data.alpha

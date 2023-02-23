@@ -2,7 +2,7 @@ import numpy as np
 from numba import jit, complex128, float64, int64
 from scipy.constants import c as c_0
 # Own libraries
-from phoeniks.optimization_problem import get_H_approx
+from .optimization_problem import get_H_approx
 
 """
 Based on the SVMAF algorithm developed by:
@@ -74,6 +74,7 @@ class SVMAF:
 
         self.dH_real = None
         self.dH_imag = None
+        self.setup()
 
     def setup(self):
         a = self.data.fd_sample_std.real
