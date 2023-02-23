@@ -12,7 +12,7 @@ and aims to be an easy to use software, where a reference and sample trace from 
 
 It is developed by Tim Vogel, PhD student at the [Photonics and Ultrafast Laser Science (PULS)](https://www.puls.ruhr-uni-bochum.de/) at the Ruhr-University Bochum, Germany. 
 
-It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), and Nicholas Greenall about THz-Time Domain Spectrometer, and tips & tricks how to extract the refractive index and absorption coefficient.
+It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), Nicholas Greenall, and [Milan Öri](https://www.menlosystems.com/products/thz-time-domain-solutions/terak15-terahertz-spectrometer/) about THz-Time Domain Spectrometer, providing tips & tricks how to extract the refractive index and absorption coefficient.
 
 ---
 
