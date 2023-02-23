@@ -1,5 +1,8 @@
 # phoeniks
-ALPHA-RELEASE (Test at your own risk)
+
+*This project is licensed under the terms of the GNU General Public License v3.0 or later.*
+
+## ALPHA-RELEASE (Test at your own risk)
 
 **phoeniks** stands for **P**ULS **h**ands-**o**n **o**ptimized **e**xtraction **o**f $\textbf{n}-\textbf{i}\cdot \textbf{k’s}$
 
@@ -35,11 +38,11 @@ Part of the code were inspired by the excellent publications from the work group
 > 
 > https://doi.org/10.1109/TTHZ.2018.2889227
 
-The group also developed a software with a graphical user interface called fit@TDS, which allows to explore different dielectric functions and how they fit to the measurement data. 
+The group also developed a software with a graphical user interface called fit@TDS, which allows to explore different dielectric functions and how they fit to the measurement data:
 
 https://github.com/THzbiophotonics/Fit-TDS
 
-Nelly is another package, written in Matlab, which is focused to solve multi-layer problems, since it can create a transfer-function on-the-fly. It is developed in the Schmuttenmaer/Neu-group at the University of Yale.
+Nelly is another package, written in Matlab, which is focused to solve multi-layer problems, since it can create a transfer-function on-the-fly. It is developed in the Schmuttenmaer/Neu-group at the University of Yale:
 
 > Uriel Tayvah, Jacob A. Spies, Jens Neu, Charles A. Schmuttenmaer.
 > 
@@ -49,7 +52,7 @@ Nelly is another package, written in Matlab, which is focused to solve multi-lay
 > 
 > https://doi.org/10.1021/acs.analchem.1c02132
 
-Nelly can be found under
+Nelly can be found under:
 
 https://github.com/YaleTHz/nelly
 
