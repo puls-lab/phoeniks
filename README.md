@@ -4,15 +4,15 @@
 
 ## ALPHA-RELEASE (Test at your own risk)
 
-**phoeniks** stands for **P**ULS **h**ands-**o**n **o**ptimized **e**xtraction **o**f $\textbf{n}-\textbf{i}\cdot \textbf{k’s}$
+**phoeniks** stands for 
 
-and aims to be an easy to use, free and open-source software (FOSS) written in Python, 
-which extracts the refractive index and absorption coefficient in the Terahertz (THz) frequency range, 
-when recorded by a THz-Time Domain Spectrometer (THz-TDS).
+> **P**ULS **h**ands-**o**n **o**ptimized **e**xtraction **o**f $\textbf{n}-\textbf{i}\cdot \textbf{k’s}$
+
+and aims to be an easy to use software, where a reference and sample trace from a THz-Time Domain Spectrometer (THz-TDS) can be inserted and refractive index and absorption coefficient of the sample under test can be extracted. It is free and open-source software (FOSS) and written in Python. It is focused on numerical extraction with minimal knowledge about the sample and (currently) supports one layer/interface.
 
 It is developed by Tim Vogel, PhD student at the [Photonics and Ultrafast Laser Science (PULS)](https://www.puls.ruhr-uni-bochum.de/) at the Ruhr-University Bochum, Germany. 
 
-It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), and Nicholas Greenall about THz-Time Domain Spectrometer, and tips & tricks how to extract the refractive index and absorption coefficient.
+It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), Nicholas Greenall, and [Milan Öri](https://www.menlosystems.com/products/thz-time-domain-solutions/terak15-terahertz-spectrometer/) about THz-Time Domain Spectrometer, providing tips & tricks how to extract the refractive index and absorption coefficient.
 
 ---
 
@@ -69,7 +69,7 @@ The knowledge about refractive index extraction was also expanded by Nicholas Gr
 
 TODO:
 - [x]  Credit all people who helped to develop this program
-- [ ]  Pick a suitable open-source license
+- [x]  Pick a suitable open-source license
 - [x]  Upload first program which runs
 - [ ]  Supply examples with artifical material
 - [ ]  Supply examples with real measurements
