@@ -66,6 +66,7 @@ The knowledge about refractive index extraction was also expanded by Nicholas Gr
 > 
 > https://etheses.whiterose.ac.uk/19045/
 
+Pixel art logo created at midjourney.com
 
 TODO:
 - [x]  Credit all people who helped to develop this program
