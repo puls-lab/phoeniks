@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm.auto import tqdm
-from scipy.optimize import fmin
+from scipy.optimize import fmin, minimize, differential_evolution
 from scipy.constants import c as c_0
 import matplotlib.pyplot as plt
 from matplotlib.ticker import EngFormatter
@@ -241,6 +241,31 @@ class Extraction:
         for key, value in tv_dict.items():
             print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.argmin(value)])}")
         return thickness_array, tv_dict
+
+    def get_new_thickness(self, thickness, thickness_range=50e-6, step_size=5e-6):
+        # TODO:
+        thickness_array = np.arange(thickness - thickness_range, thickness + thickness_range, step_size)
+        self.progress_bar = False
+        oe_dict = {}
+        for idx, thickness in enumerate(tqdm(thickness_array)):
+            # Get refractive index for given thickness
+            frequency, n, k, alpha = self.run_optimization(thickness)
+            result = differential_evolution(self.offset_exponential,
+                                            bounds=((-2, 2), (-1, 1), (0, 3)),
+                                            args=(frequency / 1e12, n))
+            oe_dict[idx] = result.fun
+        oe_dict = oe_dict / np.max(oe_dict)
+        return thickness_array, oe_dict
+
+    def offset_exponential(self, a, b, c, omega, n):
+        n_fit = a * np.exp(-b * omega) + c
+        return np.sqrt(np.sum((n - n_fit) ** 2) / len(n))
+
+    @staticmethod
+    def get_RMSE(n, n_fit, k, k_fit):
+        rmse_real = np.sqrt(np.sum((n - n_fit) ** 2) / len(n))
+        rmse_imag = np.sqrt(np.sum((k - k_fit) ** 2) / len(k))
+        return rmse_real + rmse_imag
 
     def get_thickness(self, thickness):
         """Tries to extract the thickness by total variation method, based on:
