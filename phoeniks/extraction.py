@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm.auto import tqdm
-from scipy.optimize import fmin, minimize, differential_evolution
+from scipy.optimize import fmin, curve_fit
 from scipy.constants import c as c_0
 import matplotlib.pyplot as plt
 from matplotlib.ticker import EngFormatter
@@ -189,6 +189,12 @@ class Extraction:
         PhD thesis, University of Leeds (2017)
         https://etheses.whiterose.ac.uk/19045/
 
+        Chen's and Pickwell-MacPherson's method based on the offset exponential method:
+        Chen X, Pickwell-MacPherson E.
+        A Sensitive and Versatile Thickness Determination Method Based on Non-Inflection Terahertz Property Fitting.
+        Sensors. 2019; 19(19):4118.
+        https://doi.org/10.3390/s19194118
+
         Ioachim's method, based on the standard deviation at each frequency
         Ioachim Pupeza, Rafal Wilk, and Martin Koch,
         "Highly accurate optical material parameter determination with THz time-domain spectroscopy,"
@@ -211,16 +217,18 @@ class Extraction:
         """
         thickness_array = np.arange(thickness - thickness_range, thickness + thickness_range, step_size)
         # Total variation dictionary
-        tv_dict = {}
+        thickness_error_dict = {}
         # Total variation of order 1
-        tv_dict["tv_1"] = np.zeros(len(thickness_array))
+        thickness_error_dict["tv_1"] = np.zeros(len(thickness_array))
         # Total variation of order 2
-        tv_dict["tv_2"] = np.zeros(len(thickness_array))
+        thickness_error_dict["tv_2"] = np.zeros(len(thickness_array))
         # Total variation, Nick's method
-        tv_dict["tv_n"] = np.zeros(len(thickness_array))
+        thickness_error_dict["tv_n"] = np.zeros(len(thickness_array))
+        # Offset exponential method
+        thickness_error_dict["offset_exponential"] = np.zeros(len(thickness_array))
         # Total variation with SVMAF values (only possible when standard deviation values are provided)
         if self.data.mode == "reference_sample_dark_standard_deviations":
-            tv_dict["tv_s"] = np.zeros(len(thickness_array))
+            thickness_error_dict["tv_s"] = np.zeros(len(thickness_array))
         # Don't show progress bar for each single iteration, instead we initialize global progress bar
         self.progress_bar = False
         for idx, thickness in enumerate(tqdm(thickness_array)):
@@ -228,63 +236,127 @@ class Extraction:
             frequency, n, k, alpha = self.run_optimization(thickness)
             # Index array needs to start at 1, since D parameter used m-1 as index
             m = np.arange(1, len(n) - 1)
-            tv_dict["tv_1"][idx] = np.sum(_D(n, k, m))
-            tv_dict["tv_2"][idx] = np.sum(np.abs(_D(n, k, m) - _D(n, k, m + 1)))
-            tv_dict["tv_n"][idx] = np.sum(np.abs(np.diff(n))) * thickness
+            thickness_error_dict["tv_1"][idx] = np.sum(_D(n, k, m))
+            thickness_error_dict["tv_2"][idx] = np.sum(np.abs(_D(n, k, m) - _D(n, k, m + 1)))
+            thickness_error_dict["tv_n"][idx] = np.sum(np.abs(np.diff(n))) * thickness
+            thickness_error_dict["offset_exponential"][idx] = self.get_RMSE_oe(frequency, n, k)
             if self.data.mode == "reference_sample_dark_standard_deviations":
                 svmaf_obj = SVMAF(self)
                 n_smooth, k_smooth, alpha_smooth = svmaf_obj.run(thickness=thickness)
-                tv_dict["tv_s"][idx] = np.sum(np.abs(n - n_smooth)) + np.sum(np.abs(k - k_smooth))
-        tv_dict["tv_1"] = tv_dict["tv_1"] / np.max(tv_dict["tv_1"])
-        tv_dict["tv_2"] = tv_dict["tv_2"] / np.max(tv_dict["tv_2"])
-        tv_dict["tv_n"] = tv_dict["tv_n"] / np.max(tv_dict["tv_n"])
-        for key, value in tv_dict.items():
+                thickness_error_dict["tv_s"][idx] = np.sum(np.abs(n - n_smooth)) + np.sum(np.abs(k - k_smooth))
+        thickness_error_dict["tv_1"] /= np.max(thickness_error_dict["tv_1"])
+        thickness_error_dict["tv_2"] /= np.max(thickness_error_dict["tv_2"])
+        thickness_error_dict["tv_n"] /= np.max(thickness_error_dict["tv_n"])
+        thickness_error_dict["offset_exponential"] /= np.max(thickness_error_dict["tv_n"])
+        for key, value in thickness_error_dict.items():
             print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.argmin(value)])}")
-        return thickness_array, tv_dict
+        return thickness_array, thickness_error_dict
 
-    def get_new_thickness(self, thickness, thickness_range=50e-6, step_size=5e-6):
-        # TODO:
-        thickness_array = np.arange(thickness - thickness_range, thickness + thickness_range, step_size)
-        self.progress_bar = False
-        oe_dict = {}
-        for idx, thickness in enumerate(tqdm(thickness_array)):
-            # Get refractive index for given thickness
-            frequency, n, k, alpha = self.run_optimization(thickness)
-            result = differential_evolution(self.offset_exponential,
-                                            bounds=((-2, 2), (-1, 1), (0, 3)),
-                                            args=(frequency / 1e12, n))
-            oe_dict[idx] = result.fun
-        oe_dict = oe_dict / np.max(oe_dict)
-        return thickness_array, oe_dict
+    def get_RMSE_oe(self, frequency, n, k):
+        """
+        Calculates the root-mean-square-error (RMSE) from the offset exponential function to extracted refractive index
+        and attenuation coefficient. Since the wrong thickness introduces oscillations to both parameters which the
+        offset exponential function cannot follow, the RMSE will increase. The minimum RMSE for multiple tested
+        thicknesses is a good indicator for the thickness of the sample.
 
-    def offset_exponential(self, a, b, c, omega, n):
-        n_fit = a * np.exp(-b * omega) + c
-        return np.sqrt(np.sum((n - n_fit) ** 2) / len(n))
+        Based on the paper
+        > Chen X, Pickwell-MacPherson E.
+        > A Sensitive and Versatile Thickness Determination Method Based on Non-Inflection Terahertz Property Fitting.
+        > Sensors. 2019; 19(19):4118.
+        > https://doi.org/10.3390/s19194118
+
+        with the additional modification to evaluate RMSE for n and k, based on
+        > Mukherjee, S., Kumar, N.M.A., Upadhya, P.C. et al.
+        > A review on numerical methods for thickness determination in  terahertz time-domain spectroscopy.
+        > Eur. Phys. J. Spec. Top. 230, 4099–4111 (2021).
+        > https://doi.org/10.1140/epjs/s11734-021-00215-9
+        """
+        rmse_real = np.nan
+        rmse_imag = np.nan
+        a, b, c = self.get_inital_guess_oe(frequency / 1e12, n)
+        try:
+            rmse_real = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=n)
+        except RuntimeError:
+            if self.debug:
+                print(
+                    "INFO: Could not find good fitting parameter for freq. vs. n for the offset exponential function.")
+        a, b, c = self.get_inital_guess_oe(frequency / 1e12, k)
+        try:
+            rmse_imag = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=k)
+        except RuntimeError:
+            if self.debug:
+                print(
+                    "INFO: Could not find good fitting parameter for freq. vs. k for the offset exponential function.")
+        total_rmse = np.nansum([rmse_real, rmse_imag])
+        return total_rmse
 
     @staticmethod
-    def get_RMSE(n, n_fit, k, k_fit):
-        rmse_real = np.sqrt(np.sum((n - n_fit) ** 2) / len(n))
-        rmse_imag = np.sqrt(np.sum((k - k_fit) ** 2) / len(k))
-        return rmse_real + rmse_imag
+    def offset_exponential(x, a, b, c):
+        # Offset exponential function, defined as
+        # y = a + b * np.exp(c * x)
+        # Careful, this is a different (but equivalent) definition as in the original publication:
+        #
+        # Chen X, Pickwell-MacPherson E.
+        # A Sensitive and Versatile Thickness Determination Method Based on Non-Inflection Terahertz Property Fitting.
+        # Sensors. 2019; 19(19):4118.
+        # https://doi.org/10.3390/s19194118
+        return a + b * np.exp(c * x)
 
-    def get_thickness(self, thickness):
-        """Tries to extract the thickness by total variation method, based on:
+    def get_inital_guess_oe(self, x, y):
+        # Finding good initial guesses for a, b, c for the function
+        # y = a + b * np.exp(c * x)
+        # "Regressions et equations integrales" from Jean Jacquelin
+        # https://en.scribd.com/doc/14674814/Regressions-et-equations-integrales
+        # See also: https://github.com/scipy/scipy/pull/9158
+        # https://scikit-guess.readthedocs.io/en/latest/appendices/reei/
+        # translation.html#non-linear-regression-of-the-types-power-exponential-logarithmic-weibull
+        x, y = self.check_input(x, y)
 
-        For references see function get_thickness_array
-        The Nelder-Mead algorithm stops searching, when the thickness changes (xtolerance) is less than 1 µm.
+        S = np.zeros(len(x))
+        S[1:] = np.cumsum(0.5 * (y[1:] + y[:-1]) * np.diff(x))
 
-        Input:
-        thickness (float): Guessed thickness of sample in [m]
+        dx = (x - x[0])
+        dy = (y - y[0])
 
-        Output:
-        thickness (float): Optimized thickness with minimum total variation
-                           in the refractive index based on Nick's method
-        """
-        # Don't show progress bar for each single iteration, instead we initialize global progress bar
-        self.progress_bar = False
-        res = fmin(error_function_thickness, x0=thickness * 1e3, xtol=1e-3, ftol=1e-3, maxiter=20, args=(self,),
-                   disp=False)
-        return res[0]
+        e_1 = np.sum(dx ** 2)
+        e_2 = np.sum(dx * S)
+        e_3 = e_2
+        e_4 = np.sum(S ** 2)
+
+        M_1 = np.array([[e_1, e_2], [e_3, e_4]])
+        # res_1 = np.linalg.inv(M_1) @ np.array([[np.sum(dx * dy)], [np.sum(dy * S)]])
+        res_1 = np.linalg.solve(M_1, np.array([[np.sum(dx * dy)], [np.sum(dy * S)]]))  # More robust method
+        c = res_1[1, 0]
+
+        e_1 = len(x)
+        e_2 = np.sum(np.exp(c * x))
+        e_3 = e_2
+        e_4 = np.sum(np.exp(2 * c * x))
+
+        M_2 = np.array([[e_1, e_2], [e_3, e_4]])
+
+        # res_2 = np.linalg.inv(M_2) @ np.array([[np.sum(y)], [np.sum(y * np.exp(c * x))]])
+        res_2 = np.linalg.solve(M_2, np.array([[np.sum(y)], [np.sum(y * np.exp(c * x))]]))  # More robust method
+        a = res_2[0, 0]
+        b = res_2[1, 0]
+        return a, b, c
+
+    @staticmethod
+    def check_input(x, y):
+        if len(x) != len(y):
+            raise ValueError("x and y must be the same length!")
+        if len(x) < 3:
+            raise ValueError(
+                "For an offset exponential fit, at least 3 x,y values need be provided, better >30 x,y values. "
+                "Increase the bandwidth/number of frequency points you evaluate over the thickness.")
+        sorted_idx = np.argsort(x)
+        y = y[sorted_idx]
+        x = x[sorted_idx]
+        # Keep only indices when x is increasing
+        keed_idx = np.diff(x) > 0
+        x = np.append(x[0], x[1:][keed_idx])
+        y = np.append(y[0], y[1:][keed_idx])
+        return x, y
 
     def run_optimization(self, thickness, delta_max=None):
         """Runs the optimization with Nelder-Mead minimization algorithm for each frequency.
