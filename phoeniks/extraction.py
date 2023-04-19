@@ -208,15 +208,16 @@ class Extraction:
 
         Output:
         thickness_array (np.ndarray, float): Tested thickness array
-        tv_1 (np.ndarray, float): Total variation method of degree 1, minimum gives the best thickness approximation
-        tv_2 (np.ndarray, float): Total variation method of degree 2, minimum gives the best thickness approximation
-        tv_2 (np.ndarray, float): Total variation based on Nick's method
+        tv_1 (np.ndarray, float): Total variation method of degree 1.
+        tv_2 (np.ndarray, float): Total variation method of degree 2.
+        tv_2 (np.ndarray, float): Total variation based on Nick's method.
+        offset_exponential (np.ndarray, float): Offset exponential method based on
+                                                Chen's and Pickwell-MacPherson's method.
         tv_s (np.ndarray, float): Total variation method compared to SVMAF data,
                                   only calculated when data is provided with standard deviation values.
-                                  Minimum gives the best thickness approximation
         """
         thickness_array = np.arange(thickness - thickness_range, thickness + thickness_range, step_size)
-        # Total variation dictionary
+        # Thickness error dictionary
         thickness_error_dict = {}
         # Total variation of order 1
         thickness_error_dict["tv_1"] = np.zeros(len(thickness_array))
