@@ -248,7 +248,7 @@ class Extraction:
         thickness_error_dict["tv_1"] /= np.max(thickness_error_dict["tv_1"])
         thickness_error_dict["tv_2"] /= np.max(thickness_error_dict["tv_2"])
         thickness_error_dict["tv_n"] /= np.max(thickness_error_dict["tv_n"])
-        thickness_error_dict["offset_exponential"] /= np.max(thickness_error_dict["tv_n"])
+        thickness_error_dict["offset_exponential"] /= np.max(thickness_error_dict["offset_exponential"])
         for key, value in thickness_error_dict.items():
             print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.argmin(value)])}")
         return thickness_array, thickness_error_dict
@@ -276,19 +276,21 @@ class Extraction:
         rmse_imag = np.nan
         a, b, c = self.get_inital_guess_oe(frequency / 1e12, n)
         try:
-            rmse_real = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=n)
+            popt, pcov = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=n)
+            rmse_real = np.sqrt(np.sum((n - self.offset_exponential(frequency / 1e12, *popt)) ** 2) / len(n))
         except RuntimeError:
             if self.debug:
                 print(
                     "INFO: Could not find good fitting parameter for freq. vs. n for the offset exponential function.")
         a, b, c = self.get_inital_guess_oe(frequency / 1e12, k)
         try:
-            rmse_imag = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=k)
+            popt, pcov = curve_fit(self.offset_exponential, p0=np.array([a, b, c]), xdata=frequency / 1e12, ydata=k)
+            rmse_imag = np.sqrt(np.sum((k - self.offset_exponential(frequency / 1e12, *popt)) ** 2) / len(k))
         except RuntimeError:
             if self.debug:
                 print(
                     "INFO: Could not find good fitting parameter for freq. vs. k for the offset exponential function.")
-        total_rmse = np.nansum([rmse_real, rmse_imag])
+        total_rmse = np.nansum(np.array([rmse_real, rmse_imag]))
         return total_rmse
 
     @staticmethod
