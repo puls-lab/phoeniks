@@ -7,7 +7,7 @@ from matplotlib.ticker import EngFormatter
 import copy
 # Internal libraries
 from .thz_data import Data
-from .optimization_problem import error_function, error_function2, error_function_thickness
+from .optimization_problem import error_function, error_function2, error_function3, error_function4
 from .svmaf import SVMAF
 
 
@@ -361,7 +361,7 @@ class Extraction:
         y = np.append(y[0], y[1:][keed_idx])
         return x, y
 
-    def run_optimization(self, thickness, delta_max=None):
+    def run_optimization(self, thickness, delta_max=None, check_jump=False):
         """Runs the optimization with Nelder-Mead minimization algorithm for each frequency.
 
         Input:
@@ -383,11 +383,12 @@ class Extraction:
         k_previous = self.data.k[0]
         if self.progress_bar:
             for i, w in enumerate(tqdm(self.data.omega)):
-                res = fmin(error_function2,
+                res = fmin(error_function4,
                            x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(
-                               i, self.data.omega[i], thickness, self.data.H, self.data.H_approx, self.data.delta_max),
+                               i, self.data.omega[i], thickness, self.data.H, self.data.phase_H, self.data.H_approx,
+                               self.data.delta_max),
                            disp=False)
                 self.data.n[i] = res[0]
                 self.data.k[i] = res[1]
@@ -395,11 +396,12 @@ class Extraction:
                 k_previous = self.data.k[i]
         else:
             for i, w in enumerate(self.data.omega):
-                res = fmin(error_function2,
+                res = fmin(error_function4,
                            x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(
-                               i, self.data.omega[i], thickness, self.data.H, self.data.H_approx, self.data.delta_max),
+                               i, self.data.omega[i], thickness, self.data.H, self.data.phase_H, self.data.H_approx,
+                               self.data.delta_max),
                            disp=False)
                 self.data.n[i] = res[0]
                 self.data.k[i] = res[1]

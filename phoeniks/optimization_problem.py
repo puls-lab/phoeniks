@@ -55,7 +55,7 @@ def get_H_approx(x, i, omega, thickness, H_approx, delta_max):
 
 # @jit(float64(float64[:], int64, float64, float64, complex128[:], complex128[:], int64), nopython=True)
 # np.unwrap is not supported by numba
-def error_function(x, i, omega, thickness, H, H_approx, delta_max):
+def error_function(x, i, omega, thickness, H, phase_H, H_approx, delta_max):
     """Compares the calculated transfer function (H_approx) with the numerical one (H) from the measurement data.
 
     Input:
@@ -69,13 +69,14 @@ def error_function(x, i, omega, thickness, H, H_approx, delta_max):
     Output:
     error (float) : Discrepancy for given x (n and k) between model and experimental transfer function."""
     H_approx[i] = get_H_approx(x, i, omega, thickness, H_approx, delta_max)
-    u = np.unwrap(np.angle(H[:i + 1]))
+    # u = np.unwrap(np.angle(H[:i + 1]))
+    u = phase_H[:i + 1]
     u_approx = np.unwrap(np.angle(H_approx[:i + 1]))
     error = np.abs(np.abs(H_approx[i]) - np.abs(H[i])) + np.abs(u[i] - u_approx[i])
     return error
 
 
-def error_function2(x, i, omega, thickness, H, H_approx, delta_max):
+def error_function2(x, i, omega, thickness, H, phase_H, H_approx, delta_max):
     """Compares the calculated transfer function (H_approx) with the numerical one (H) from the measurement data.
 
     Input:
@@ -83,7 +84,7 @@ def error_function2(x, i, omega, thickness, H, H_approx, delta_max):
     i (int) : Iteration variable for index in transfer function array
     thickness (float) : Thickness of material
     H (np.ndarray, complex) : Transfer function, calculated by experimental data
-    H_approx (np.ndarray, complex) : Tranfer function, estimated by transfer function model
+    H_approx (np.ndarray, complex) : Transfer function, estimated by transfer function model
     delta_max (int) : Maximum number of fabry-perot echoes included in transfer function model
 
     Output:
@@ -94,6 +95,48 @@ def error_function2(x, i, omega, thickness, H, H_approx, delta_max):
     chi_2 = (np.mod(d + np.pi, 2 * np.pi) - np.pi) ** 2
     error = chi_1 + chi_2
     return error
+
+
+def error_function3(x, i, omega, thickness, H, phase_H, H_approx, delta_max):
+    """Error function from
+
+    Christopher L. Davies et al.
+    Temperature-Dependent Refractive Index of Quartz at Terahertz Frequencies
+    https://doi.org/10.1007/s10762-018-0538-7
+    """
+    H_approx[i] = get_H_approx(x, i, omega, thickness, H_approx, delta_max)
+    phase_H_approx = np.unwrap(np.angle(H_approx[:i + 1]))
+    phase_H_approx += get_offset(phase_H_approx)
+    xi_mod = np.abs(H_approx[i]) - np.abs(H[i])
+    xi_arg = phase_H[i] - phase_H_approx[i]
+    return xi_mod ** 2 + xi_arg ** 2
+
+
+def error_function4(x, i, omega, thickness, H, phase_H, H_approx, delta_max):
+    """Error function from
+
+    Osman S. Ahmed et al.
+    Efficient Optimization Approach for Accurate Parameter Extraction With Terahertz Time-Domain Spectroscopy
+    https://doi.org/10.1109/JLT.2010.2047936
+    """
+    H_approx[i] = get_H_approx(x, i, omega, thickness, H_approx, delta_max)
+    xi = 1
+    M = np.log(np.abs(H_approx[i]) / np.abs(H[i]))
+    Phi = np.unwrap(np.angle(H_approx[:i + 1]))[i] - phase_H[i]
+    return M ** 2 + xi * Phi ** 2
+
+
+def get_offset(phase):
+    if len(phase) < 2:
+        offset = 0
+    else:
+        d_phase = np.diff(phase)
+        filtered_data = np.abs(d_phase - np.median(d_phase))
+        my_idx = np.append(False, filtered_data > np.pi)
+        offset = np.zeros(len(phase))
+        offset[my_idx] = 2 * np.pi
+        offset = np.cumsum(offset)
+    return offset
 
 
 def error_function_thickness(thickness, obj):
