@@ -72,6 +72,7 @@ class Plot:
         if extract_data.data.mode != "reference_sample":
             ax[0].plot(extract_data.data.frequency,
                        20 * np.log10(np.abs(extract_data.data.fd_dark)) - ref_power_spectrum_max,
+                       color="black",
                        alpha=0.9,
                        label="Dark")
         ax[0].legend(loc="upper right")
