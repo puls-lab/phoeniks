@@ -14,6 +14,13 @@ It is developed by Tim Vogel, PhD student at the [Photonics and Ultrafast Laser 
 
 It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), Nicholas Greenall, and [Milan Öri](https://www.menlosystems.com/products/thz-time-domain-solutions/terak15-terahertz-spectrometer/) about THz-Time Domain Spectrometer, providing tips & tricks how to extract the refractive index and absorption coefficient.
 
+
+There is no manual yet, but you can find a series of YouTube tutorials in the following:
+[![Phoeniks - Tutorial - How to download and install 00](https://img.youtube.com/vi/-7DV7OxYu_k/default.jpg)](https://www.youtube.com/watch?v=-7DV7OxYu_k)
+
+[![Phoeniks - Tutorial - Basic Extraction - Example 01](https://img.youtube.com/vi/QBSKeY-IRJc/default.jpg)](https://www.youtube.com/watch?v=QBSKeY-IRJc)
+
+
 ---
 
 ## Credits:
@@ -72,6 +79,6 @@ TODO:
 - [x]  Credit all people who helped to develop this program
 - [x]  Pick a suitable open-source license
 - [x]  Upload first program which runs
-- [ ]  Supply examples with artifical material
+- [x]  Supply examples with artifical material
 - [ ]  Supply examples with real measurements
 - [ ]  Supply a manual/handbook, explaining the code (why is it doing what)
