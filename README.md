@@ -15,10 +15,19 @@ It is developed by Tim Vogel, PhD student at the [Photonics and Ultrafast Laser 
 It is not developed in a vacuum, but I want to credit many fruitful discussions with [Ioachim Pupeza](https://orcid.org/0000-0001-8422-667X), [Romain Peretti](https://orcid.org/0000-0002-1707-7341), [Andrew Burnett](https://orcid.org/0000-0003-2175-1893), Nicholas Greenall, and [Milan Öri](https://www.menlosystems.com/products/thz-time-domain-solutions/terak15-terahertz-spectrometer/) about THz-Time Domain Spectrometer, providing tips & tricks how to extract the refractive index and absorption coefficient.
 
 
-There is no manual yet, but you can find a series of YouTube tutorials in the following:
-[![Phoeniks - Tutorial - How to download and install 00](https://img.youtube.com/vi/-7DV7OxYu_k/default.jpg)](https://www.youtube.com/watch?v=-7DV7OxYu_k)
+There is no manual yet, but you can find this series of YouTube tutorials hopefully helpful:
 
-[![Phoeniks - Tutorial - Basic Extraction - Example 01](https://img.youtube.com/vi/QBSKeY-IRJc/default.jpg)](https://www.youtube.com/watch?v=QBSKeY-IRJc)
+
+[YouTube - Tutorial - How to download and install 00](https://www.youtube.com/watch?v=-7DV7OxYu_k&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=1)
+
+
+[![Phoeniks - Tutorial - How to download and install 00](https://img.youtube.com/vi/-7DV7OxYu_k/mqdefault.jpg)](https://www.youtube.com/watch?v=-7DV7OxYu_k)
+
+
+[YouTube - Tutorial - Basic Extraction - Example 01](https://www.youtube.com/watch?v=QBSKeY-IRJc&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=2)
+
+
+[![Phoeniks - Tutorial - Basic Extraction - Example 01](https://img.youtube.com/vi/QBSKeY-IRJc/mqdefault.jpg)](https://www.youtube.com/watch?v=QBSKeY-IRJc)
 
 
 ---
