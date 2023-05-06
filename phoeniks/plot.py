@@ -25,7 +25,7 @@ class Plot:
         ax[0].plot(data.time, data.td_reference, label="Reference")
         ax[0].plot(data.time, data.td_sample, label="Sample")
         if data.mode != "reference_sample":
-            ax[0].plot(data.time, data.td_dark, label="Dark")
+            ax[0].plot(data.time, data.td_dark, color="black", alpha=0.5, label="Dark")
         ax[0].legend(loc="upper right")
         ax[0].grid(True)
         ax[0].xaxis.set_major_formatter(EngFormatter("s"))
@@ -47,7 +47,8 @@ class Plot:
         if data.mode != "reference_sample":
             ax[1].plot(data.frequency[filter_frequency],
                        20 * np.log10(np.abs(data.fd_dark[filter_frequency])) - ref_power_spectrum_max,
-                       alpha=0.9,
+                       alpha=0.5,
+                       color="black",
                        label="Dark")
         ax[1].legend(loc="upper right")
         ax[1].grid(True)
@@ -73,7 +74,7 @@ class Plot:
             ax[0].plot(extract_data.data.frequency,
                        20 * np.log10(np.abs(extract_data.data.fd_dark)) - ref_power_spectrum_max,
                        color="black",
-                       alpha=0.9,
+                       alpha=0.5,
                        label="Dark")
         ax[0].legend(loc="upper right")
         ax[0].grid(True)
@@ -107,12 +108,10 @@ class Plot:
         ax[1].grid(True)
         plt.tight_layout()
 
-    def total_variation(self, thickness_array, tv_dict):
+    def thickness_error(self, thickness_array, thickness_error_dict):
         fig, ax = plt.subplots()
-        ax.plot(thickness_array, tv_dict["tv_1"] / np.max(tv_dict["tv_1"]), label="TotalVariation, deg=1")
-        ax.plot(thickness_array, tv_dict["tv_2"] / np.max(tv_dict["tv_2"]), label="TotalVariation, deg=2")
-        if len(tv_dict) > 2:
-            ax.plot(thickness_array, tv_dict["tv_s"] / np.max(tv_dict["tv_s"]), label="TotalVariation vs. SVMAF")
+        for label, thickness_error in thickness_error_dict.items():
+            ax.plot(thickness_array, thickness_error, label=label)
         ax.legend()
         ax.grid(True)
         ax.xaxis.set_major_formatter(EngFormatter("m"))

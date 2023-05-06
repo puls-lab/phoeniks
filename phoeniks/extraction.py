@@ -43,6 +43,7 @@ class Extraction:
         self.k_air = 0
         # How many Fabry-Perot echoes fit in the rest of the time trace
         self.delta_max = None
+        self.debug = False
 
     def _cut_frequency(self, idx_start, idx_stop):
         self.data.frequency = np.copy(self.original.frequency[idx_start:idx_stop])
@@ -53,6 +54,11 @@ class Extraction:
         self.data.fd_sample = np.copy(self.original.fd_sample[idx_start:idx_stop])
 
     def unwrap_phase(self, frequency_start=None, frequency_stop=None):
+        if self.data.mode != "reference_sample" and frequency_start is None and frequency_stop is None:
+            frequency_start, frequency_stop = self.get_reliable_frequency_range()
+            print("Automatic Bandwidth detection.")
+            print(f"Frequency start: {EngFormatter('Hz')(frequency_start)}\t"
+                  f"Frequency stop: {EngFormatter('Hz')(frequency_stop)}")
         if frequency_start is not None and frequency_stop is None:
             if frequency_start < self.original.frequency[0] or frequency_start > self.original.frequency[-1]:
                 raise ValueError("frequency_start outside frequency range of data.")
@@ -124,8 +130,8 @@ class Extraction:
             ax[1].set_xlabel("Frequency")
 
     def get_reliable_frequency_range(self) -> (float, float):
-        """Sample amplitude in frequency domain needs to be at least two times stronger than the dark measurement."""
-        idx = np.where(np.abs(self.data.fd_sample) > 2 * np.abs(self.data.fd_dark))[0]
+        """Sample amplitude in frequency domain needs to be at least ten times stronger than the dark measurement."""
+        idx = np.where(np.abs(self.data.fd_sample) > 10 * np.abs(self.data.fd_dark))[0]
         idx_start = idx[0]
         idx_stop = idx[-1]
         return self.data.frequency[idx_start], self.data.frequency[idx_stop]
@@ -208,28 +214,21 @@ class Extraction:
 
         Output:
         thickness_array (np.ndarray, float): Tested thickness array
-        tv_1 (np.ndarray, float): Total variation method of degree 1.
-        tv_2 (np.ndarray, float): Total variation method of degree 2.
-        tv_2 (np.ndarray, float): Total variation based on Nick's method.
-        offset_exponential (np.ndarray, float): Offset exponential method based on
-                                                Chen's and Pickwell-MacPherson's method.
-        tv_s (np.ndarray, float): Total variation method compared to SVMAF data,
+        thickness_error_dict (dict of np.ndarray): Different error methods,
+                                                   where the minium indicates the thickness of the material
+        --> Total Variation, SVMAF (np.ndarray, float): Total variation method compared to SVMAF data,
                                   only calculated when data is provided with standard deviation values.
         """
         thickness_array = np.arange(thickness - thickness_range, thickness + thickness_range, step_size)
         # Thickness error dictionary
         thickness_error_dict = {}
-        # Total variation of order 1
-        thickness_error_dict["tv_1"] = np.zeros(len(thickness_array))
-        # Total variation of order 2
-        thickness_error_dict["tv_2"] = np.zeros(len(thickness_array))
-        # Total variation, Nick's method
-        thickness_error_dict["tv_n"] = np.zeros(len(thickness_array))
-        # Offset exponential method
-        thickness_error_dict["offset_exponential"] = np.zeros(len(thickness_array))
+        names = ["Total Variation, deg=1", "Total Variation, deg=2", "Total Variation, Nick's method",
+                 "Offset exponential"]
+        for name in names:
+            thickness_error_dict[name] = np.zeros(len(thickness_array))
         # Total variation with SVMAF values (only possible when standard deviation values are provided)
         if self.data.mode == "reference_sample_dark_standard_deviations":
-            thickness_error_dict["tv_s"] = np.zeros(len(thickness_array))
+            thickness_error_dict["Total Variation, SVMAF"] = np.zeros(len(thickness_array))
         # Don't show progress bar for each single iteration, instead we initialize global progress bar
         self.progress_bar = False
         for idx, thickness in enumerate(tqdm(thickness_array)):
@@ -237,20 +236,21 @@ class Extraction:
             frequency, n, k, alpha = self.run_optimization(thickness)
             # Index array needs to start at 1, since D parameter used m-1 as index
             m = np.arange(1, len(n) - 1)
-            thickness_error_dict["tv_1"][idx] = np.sum(_D(n, k, m))
-            thickness_error_dict["tv_2"][idx] = np.sum(np.abs(_D(n, k, m) - _D(n, k, m + 1)))
-            thickness_error_dict["tv_n"][idx] = np.sum(np.abs(np.diff(n))) * thickness
-            thickness_error_dict["offset_exponential"][idx] = self.get_RMSE_oe(frequency, n, k)
+            thickness_error_dict["Total Variation, deg=1"][idx] = np.sum(_D(n, k, m))
+            thickness_error_dict["Total Variation, deg=2"][idx] = np.sum(np.abs(_D(n, k, m) - _D(n, k, m + 1)))
+            thickness_error_dict["Total Variation, Nick's method"][idx] = np.sum(np.abs(np.diff(n))) * thickness
+            thickness_error_dict["Offset exponential"][idx] = self.get_RMSE_oe(frequency, n, k)
             if self.data.mode == "reference_sample_dark_standard_deviations":
                 svmaf_obj = SVMAF(self)
                 n_smooth, k_smooth, alpha_smooth = svmaf_obj.run(thickness=thickness)
                 thickness_error_dict["tv_s"][idx] = np.sum(np.abs(n - n_smooth)) + np.sum(np.abs(k - k_smooth))
-        thickness_error_dict["tv_1"] /= np.max(thickness_error_dict["tv_1"])
-        thickness_error_dict["tv_2"] /= np.max(thickness_error_dict["tv_2"])
-        thickness_error_dict["tv_n"] /= np.max(thickness_error_dict["tv_n"])
-        thickness_error_dict["offset_exponential"] /= np.max(thickness_error_dict["offset_exponential"])
         for key, value in thickness_error_dict.items():
-            print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.argmin(value)])}")
+            if np.all(np.isnan(value)):
+                del thickness_error_dict[key]
+            else:
+                thickness_error_dict[key] /= np.nanmax(value)
+        for key, value in thickness_error_dict.items():
+            print(f"{key}, optimal thickness: {EngFormatter('m')(thickness_array[np.nanargmin(value)])}")
         return thickness_array, thickness_error_dict
 
     def get_RMSE_oe(self, frequency, n, k):
@@ -290,8 +290,10 @@ class Extraction:
             if self.debug:
                 print(
                     "INFO: Could not find good fitting parameter for freq. vs. k for the offset exponential function.")
-        total_rmse = np.nansum(np.array([rmse_real, rmse_imag]))
-        return total_rmse
+        if np.isnan(rmse_real) and np.isnan(rmse_imag):
+            return np.nan
+        else:
+            return np.nansum(np.array([rmse_real, rmse_imag]))
 
     @staticmethod
     def offset_exponential(x, a, b, c):
@@ -383,7 +385,7 @@ class Extraction:
         k_previous = self.data.k[0]
         if self.progress_bar:
             for i, w in enumerate(tqdm(self.data.omega)):
-                res = fmin(error_function4,
+                res = fmin(error_function,
                            x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(
@@ -396,7 +398,7 @@ class Extraction:
                 k_previous = self.data.k[i]
         else:
             for i, w in enumerate(self.data.omega):
-                res = fmin(error_function4,
+                res = fmin(error_function,
                            x0=np.array([n_previous, k_previous]),
                            xtol=self.accuracy,
                            args=(

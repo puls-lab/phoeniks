@@ -6,12 +6,6 @@ from numba import jit, complex128, float64, int64
 @jit(complex128(float64, float64, float64, float64), nopython=True)
 def p(n, k, omega, thickness):
     """Propagation in a material with complex refractive index and thickness."""
-    # TODO:
-    #  I wrote before
-    #  np.exp(-omega * (k + 1j * n) * thickness / c_0)
-    #  Possible bug? Ioachim wrote:
-    #  (- omega * k * thickness - 1j * omega * n * thickness) / c_0
-    #  but k should have the 1j, since its imaginary
     # I think its solved, the -1j before the bracket removes the 1j before the k
     # complex_n = n + 1j * k
     return np.exp((- omega * k * thickness - 1j * omega * n * thickness) / c_0)
