@@ -20,15 +20,15 @@ There is no manual yet, but you can find this series of YouTube tutorials hopefu
 
 [YouTube - Tutorial - How to download and install 00](https://www.youtube.com/watch?v=-7DV7OxYu_k&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=1)
 
-
-[![Phoeniks - Tutorial - How to download and install 00](https://img.youtube.com/vi/-7DV7OxYu_k/mqdefault.jpg)](https://www.youtube.com/watch?v=-7DV7OxYu_k)
-
+<a href="https://www.youtube.com/watch?v=-7DV7OxYu_k&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=1" target="_blank">
+ <img src="https://img.youtube.com/vi/-7DV7OxYu_k/hqdefault.jpg" alt="Phoeniks - Tutorial - How to download and install 00" border="10" />
+</a>
 
 [YouTube - Tutorial - Basic Extraction - Example 01](https://www.youtube.com/watch?v=QBSKeY-IRJc&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=2)
 
-
-[![Phoeniks - Tutorial - Basic Extraction - Example 01](https://img.youtube.com/vi/QBSKeY-IRJc/mqdefault.jpg)](https://www.youtube.com/watch?v=QBSKeY-IRJc)
-
+<a href="https://www.youtube.com/watch?v=QBSKeY-IRJc&list=PLBl95THK44rPBusZgUx_J9c1wVAN4ob27&index=2" target="_blank">
+ <img src="https://img.youtube.com/vi/QBSKeY-IRJc/hqdefault.jpg" alt="Phoeniks - Tutorial - Basic Extraction - Example 01" border="10" />
+</a>
 
 ---
 
